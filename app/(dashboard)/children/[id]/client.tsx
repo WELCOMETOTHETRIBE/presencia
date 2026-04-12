@@ -4,7 +4,10 @@ import { useState } from "react"
 import { Tabs } from "@/components/ui/Tabs"
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
+import { Button } from "@/components/ui/Button"
 import { ObservationInsight } from "@/components/ai/ObservationInsight"
+import { MilestoneTracker } from "@/components/children/MilestoneTracker"
+import { useToast } from "@/components/ui/Toast"
 import { formatRelative } from "@/lib/utils"
 
 const TABS = [
@@ -26,6 +29,7 @@ const contextLabels: Record<string, string> = {
 
 interface ChildProfileClientProps {
   childId: string
+  childStage: string
   observations: {
     id: string
     content: string
@@ -39,6 +43,7 @@ interface ChildProfileClientProps {
     seenAt: string
     notes: string | null
     milestone: {
+      id: string
       title: string
       category: string
       description: string
@@ -56,6 +61,7 @@ interface ChildProfileClientProps {
 
 export function ChildProfileClient({
   childId,
+  childStage,
   observations,
   milestones,
   routines,
@@ -100,40 +106,14 @@ export function ChildProfileClient({
       )}
 
       {tab === "milestones" && (
-        <div className="space-y-3">
-          {milestones.length === 0 ? (
-            <Card className="text-center py-8">
-              <p className="text-ink-faint text-sm">
-                No milestones observed yet
-              </p>
-            </Card>
-          ) : (
-            milestones.map((m) => (
-              <Card key={m.id}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="sage">{m.milestone.category}</Badge>
-                  <span className="text-xs text-ink-faint">
-                    {formatRelative(m.seenAt)}
-                  </span>
-                </div>
-                <h4 className="font-medium text-ink text-sm">
-                  {m.milestone.title}
-                </h4>
-                <p className="text-xs text-ink-muted mt-1">
-                  {m.milestone.description}
-                </p>
-                {m.milestone.rieNote && (
-                  <p className="text-xs text-sage-dark mt-1 italic">
-                    {m.milestone.rieNote}
-                  </p>
-                )}
-                {m.notes && (
-                  <p className="text-xs text-ink-muted mt-1">Note: {m.notes}</p>
-                )}
-              </Card>
-            ))
-          )}
-        </div>
+        <MilestoneTracker
+          childId={childId}
+          childStage={childStage}
+          existingChecks={milestones.map((m) => ({
+            milestoneId: m.milestone.id,
+            seenAt: m.seenAt,
+          }))}
+        />
       )}
 
       {tab === "routines" && (
@@ -161,5 +141,45 @@ export function ChildProfileClient({
         </div>
       )}
     </div>
+  )
+}
+
+export function ShareButton({ childId }: { childId: string }) {
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  async function handleShare() {
+    setLoading(true)
+    const res = await fetch(`/api/children/${childId}/share`, {
+      method: "POST",
+    })
+    if (res.ok) {
+      const { url } = await res.json()
+      const fullUrl = window.location.origin + url
+
+      if (navigator.share) {
+        navigator.share({
+          title: "Child's Presencia Journal",
+          url: fullUrl,
+        })
+      } else {
+        await navigator.clipboard.writeText(fullUrl)
+        toast("Portal link copied to clipboard")
+      }
+    } else {
+      toast("Failed to generate share link", "error")
+    }
+    setLoading(false)
+  }
+
+  return (
+    <Button variant="secondary" size="sm" onClick={handleShare} loading={loading}>
+      <svg className="w-4 h-4 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+        <polyline points="16 6 12 2 8 6" />
+        <line x1="12" y1="2" x2="12" y2="15" />
+      </svg>
+      Share with family
+    </Button>
   )
 }

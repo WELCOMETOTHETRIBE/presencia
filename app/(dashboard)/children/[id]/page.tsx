@@ -6,7 +6,7 @@ import { Topbar } from "@/components/layout/Topbar"
 import { Avatar } from "@/components/ui/Avatar"
 import { Badge } from "@/components/ui/Badge"
 import { Card } from "@/components/ui/Card"
-import { ChildProfileClient } from "./client"
+import { ChildProfileClient, ShareButton } from "./client"
 
 export default async function ChildProfilePage({
   params,
@@ -45,7 +45,11 @@ export default async function ChildProfilePage({
 
   return (
     <div>
-      <Topbar title={child.name} subtitle={getAgeDisplay(child.dob)} />
+      <Topbar
+        title={child.name}
+        subtitle={getAgeDisplay(child.dob)}
+        action={<ShareButton childId={child.id} />}
+      />
 
       {/* Profile header */}
       <Card className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
@@ -71,6 +75,7 @@ export default async function ChildProfilePage({
       {/* Tabs (client component) */}
       <ChildProfileClient
         childId={child.id}
+        childStage={child.stage}
         observations={child.observations.map((o) => ({
           ...o,
           loggedAt: o.loggedAt.toISOString(),
