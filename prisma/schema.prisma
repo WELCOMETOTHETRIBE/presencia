@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  password           String?
+  image              String?
+  role               Role                @default(EDUCARER)
+  plan               Plan                @default(FREE)
+  stripeId           String?
+  subscriptionId     String?
+  subscriptionStatus String?
+  bio                String?
+  credentials        String?
+  schoolAffil        String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  children           Child[]
+  observations       Observation[]
+  aiConversations    AIConversation[]
+  aiInsights         AIInsight[]
+  sessions           Session[]
+  accounts           Account[]
+  invites            FamilyInvite[]
+  onboardingProgress OnboardingProgress?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Child {
+  id           String           @id @default(cuid())
+  name         String
+  dob          DateTime
+  stage        ChildStage
+  avatarColor  String           @default("sage")
+  allergies    String?
+  notes        String?
+  temperament  String?
+  familyNotes  String?
+  isActive     Boolean          @default(true)
+  educarer     User             @relation(fields: [educarerId], references: [id])
+  educarerId   String
+  observations Observation[]
+  milestones   MilestoneCheck[]
+  routines     Routine[]
+  aiInsights   AIInsight[]
+  shareToken   String?          @unique
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model Observation {
+  id         String     @id @default(cuid())
+  child      Child      @relation(fields: [childId], references: [id])
+  childId    String
+  educarer   User       @relation(fields: [educarerId], references: [id])
+  educarerId String
+  context    ObsContext
+  content    String     @db.Text
+  tags       String[]
+  isPrivate  Boolean    @default(false)
+  aiInsight  AIInsight?
+  loggedAt   DateTime   @default(now())
+  createdAt  DateTime   @default(now())
+}
+
+model Milestone {
+  id            String           @id @default(cuid())
+  stage         ChildStage
+  category      String
+  title         String           @unique
+  description   String
+  rieNote       String?
+  typicalWindow String?
+  flagNote      String?
+  principle     String?
+  order         Int
+  checks        MilestoneCheck[]
+}
+
+model MilestoneCheck {
+  id          String    @id @default(cuid())
+  child       Child     @relation(fields: [childId], references: [id])
+  childId     String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id])
+  milestoneId String
+  seenAt      DateTime  @default(now())
+  notes       String?
+
+  @@unique([childId, milestoneId])
+}
+
+model Routine {
+  id      String      @id @default(cuid())
+  child   Child       @relation(fields: [childId], references: [id])
+  childId String
+  label   String
+  time    String
+  type    RoutineType
+  notes   String?
+  order   Int
+}
+
+model DailyIntention {
+  id        String @id @default(cuid())
+  day       Int    @unique
+  category  String
+  principle String
+  text      String @db.Text
+  whoFor    String
+  stageFit  String
+}
+
+model OnboardingModule {
+  id           String @id @default(cuid())
+  moduleNumber Int    @unique
+  title        String
+  duration     String
+  objectives   String @db.Text
+  keyConcepts  String @db.Text
+  exercise     String @db.Text
+  reflection   String @db.Text
+  unlocks      String
+}
+
+model OnboardingProgress {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String   @unique
+  completedIds Int[]
+  updatedAt    DateTime @updatedAt
+}
+
+model FamilyInvite {
+  id         String   @id @default(cuid())
+  educarer   User     @relation(fields: [educarerId], references: [id])
+  educarerId String
+  childId    String
+  email      String
+  token      String   @unique @default(cuid())
+  accepted   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model AIConversation {
+  id        String      @id @default(cuid())
+  user      User        @relation(fields: [userId], references: [id])
+  userId    String
+  childId   String?
+  feature   AIFeature
+  messages  AIMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model AIMessage {
+  id             String         @id @default(cuid())
+  conversation   AIConversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+  role           String
+  content        String         @db.Text
+  createdAt      DateTime       @default(now())
+}
+
+model AIInsight {
+  id            String       @id @default(cuid())
+  user          User         @relation(fields: [userId], references: [id])
+  userId        String
+  child         Child?       @relation(fields: [childId], references: [id])
+  childId       String?
+  observation   Observation? @relation(fields: [observationId], references: [id])
+  observationId String?      @unique
+  feature       AIFeature
+  prompt        String       @db.Text
+  response      String       @db.Text
+  createdAt     DateTime     @default(now())
+}
+
+enum Role {
+  EDUCARER
+  PARENT
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PRO
+  STUDIO
+}
+
+enum ChildStage {
+  INFANT
+  TODDLER
+  PRESCHOOL
+}
+
+enum ObsContext {
+  FREE_PLAY
+  CARE_ROUTINE
+  FEEDING
+  TRANSITION
+  PEER_INTERACTION
+  EMOTIONAL_MOMENT
+  OUTDOOR
+  GROUP
+}
+
+enum RoutineType {
+  CARE
+  PLAY
+  REST
+  TRANSITION
+  FEEDING
+}
+
+enum AIFeature {
+  OBSERVATION_INSIGHT
+  PARENT_COMM_DRAFT
+  GUIDE_CHAT
+  SCENARIO_HELP
+  ONBOARDING_TUTOR
+  WEEKLY_DIGEST
+}
