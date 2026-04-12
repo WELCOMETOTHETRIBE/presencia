@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/Sidebar"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { ToastProvider } from "@/components/ui/Toast"
+import { ScenarioHelperWrapper } from "./scenario-helper"
 
 export default function DashboardLayout({
   children,
@@ -17,6 +18,7 @@ export default function DashboardLayout({
           </div>
         </main>
         <BottomNav />
+        <ScenarioHelperWrapper />
       </div>
     </ToastProvider>
   )

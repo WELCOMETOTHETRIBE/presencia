@@ -36,7 +36,7 @@ export default async function HomePage() {
           </a>
         </div>
         <p className="text-xs text-ink-faint mt-8">
-          Created with Rebecca Suazo &middot; Larchmont Charter School, Los Angeles
+          Created by Rebecca Suazo &middot; Los Angeles
         </p>
         <p className="text-xs text-ink-faint mt-1 italic">
           See more. Do less. Trust the child.

@@ -1,21 +1,21 @@
-import { Topbar } from "@/components/layout/Topbar"
-import { Card } from "@/components/ui/Card"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+import { redirect } from "next/navigation"
+import { GuideChat } from "@/components/ai/GuideChat"
 
-export default function GuidePage() {
+export default async function GuidePage() {
+  const session = await auth()
+  if (!session?.user?.id) redirect("/login")
+
+  const children = await prisma.child.findMany({
+    where: { educarerId: session.user.id, isActive: true },
+    select: { id: true, name: true },
+    orderBy: { createdAt: "desc" },
+  })
+
   return (
     <div>
-      <Topbar
-        title="AI Guide"
-        subtitle="Your RIE mentor, available when you need it"
-      />
-      <Card className="text-center py-16">
-        <div className="text-4xl mb-4">🌿</div>
-        <h3 className="font-heading text-xl text-ink mb-2">Coming soon</h3>
-        <p className="text-sm text-ink-muted max-w-md mx-auto">
-          The AI Guide will be your Brain-grounded RIE mentor — offering observation
-          insights, scenario help, and family communication drafts.
-        </p>
-      </Card>
+      <GuideChat children={children} />
     </div>
   )
 }

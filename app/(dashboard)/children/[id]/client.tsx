@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Tabs } from "@/components/ui/Tabs"
 import { Card } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
+import { ObservationInsight } from "@/components/ai/ObservationInsight"
 import { formatRelative } from "@/lib/utils"
 
 const TABS = [
@@ -54,6 +55,7 @@ interface ChildProfileClientProps {
 }
 
 export function ChildProfileClient({
+  childId,
   observations,
   milestones,
   routines,
@@ -90,6 +92,7 @@ export function ChildProfileClient({
                     ))}
                   </div>
                 )}
+                <ObservationInsight observationId={obs.id} childId={childId} />
               </Card>
             ))
           )}
