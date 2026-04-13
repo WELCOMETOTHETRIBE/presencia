@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, dob, stage, avatarColor, allergies, notes, temperament, familyNotes } = body
+  const { name, dob, stage, relationship, avatarColor, allergies, notes, temperament, familyNotes } = body
 
   if (!name || !dob || !stage) {
     return NextResponse.json(
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       name,
       dob: new Date(dob),
       stage,
+      relationship: relationship || "Care receiver",
       avatarColor: avatarColor || "sage",
       allergies,
       notes,

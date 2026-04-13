@@ -102,6 +102,7 @@ export function OnboardWizard({ questions }: OnboardWizardProps) {
   const [name, setName] = useState("")
   const [dob, setDob] = useState("")
   const [stage, setStage] = useState("")
+  const [relationship, setRelationship] = useState("")
   const [avatarColor, setAvatarColor] = useState("sage")
 
   // Answers keyed by question text
@@ -162,6 +163,7 @@ export function OnboardWizard({ questions }: OnboardWizardProps) {
         name,
         dob,
         stage,
+        relationship: relationship || "Care receiver",
         avatarColor,
         allergies,
         temperament,
@@ -271,6 +273,42 @@ export function OnboardWizard({ questions }: OnboardWizardProps) {
 
               <div>
                 <p className="block text-sm font-medium text-ink-muted mb-2">
+                  My relationship to {name || "this child"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Care receiver",
+                    "Son",
+                    "Daughter",
+                    "Nephew",
+                    "Niece",
+                    "Grandchild",
+                    "Foster child",
+                    "Student",
+                  ].map((rel) => (
+                    <button
+                      key={rel}
+                      type="button"
+                      onClick={() => setRelationship(rel)}
+                      className={`px-3.5 py-2 rounded-full text-sm font-medium transition-all ${
+                        relationship === rel
+                          ? "bg-sage text-white shadow-sm"
+                          : "bg-white border border-border text-ink-muted hover:border-sage/30"
+                      }`}
+                    >
+                      {rel}
+                    </button>
+                  ))}
+                </div>
+                {relationship === "" && (
+                  <p className="text-xs text-ink-faint mt-2 italic">
+                    This helps frame the care context and communication style
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <p className="block text-sm font-medium text-ink-muted mb-2">
                   Choose a color for {name || "this child"}
                 </p>
                 <div className="flex gap-3">
@@ -376,6 +414,11 @@ export function OnboardWizard({ questions }: OnboardWizardProps) {
             <h2 className="font-heading text-2xl text-ink mb-2">
               Welcome, {name || "little one"}.
             </h2>
+            {relationship && (
+              <p className="text-sm text-sage-dark font-medium mb-1">
+                {relationship}
+              </p>
+            )}
             <p className="text-ink-muted text-sm max-w-md mx-auto mb-2">
               {Object.values(answers).filter((a) => a.trim()).length} questions
               answered across {sectionKeys.length} sections.

@@ -56,6 +56,7 @@ export default async function ChildProfilePage({
         <Avatar name={child.name} color={child.avatarColor} size="lg" />
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="sage">{child.relationship || "Care receiver"}</Badge>
             <Badge variant={stageVariant[child.stage]}>
               {child.stage.charAt(0) + child.stage.slice(1).toLowerCase()}
             </Badge>

@@ -9,6 +9,7 @@ interface ChildCardProps {
   name: string
   dob: string | Date
   stage: string
+  relationship?: string
   avatarColor: string
   observationCount?: number
 }
@@ -24,6 +25,7 @@ export function ChildCard({
   name,
   dob,
   stage,
+  relationship,
   avatarColor,
   observationCount,
 }: ChildCardProps) {
@@ -33,7 +35,12 @@ export function ChildCard({
         <Avatar name={name} color={avatarColor} size="lg" />
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-ink">{name}</h3>
-          <p className="text-sm text-ink-muted">{getAgeDisplay(dob)}</p>
+          <p className="text-sm text-ink-muted">
+            {getAgeDisplay(dob)}
+            {relationship && (
+              <span className="text-ink-faint"> &middot; {relationship}</span>
+            )}
+          </p>
           <div className="flex items-center gap-2 mt-1.5">
             <Badge variant={stageVariant[stage as keyof typeof stageVariant] || "sage"}>
               {stage.charAt(0) + stage.slice(1).toLowerCase()}

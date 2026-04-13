@@ -64,6 +64,7 @@ model Child {
   name         String
   dob          DateTime
   stage        ChildStage
+  relationship String           @default("Care receiver")
   avatarColor  String           @default("sage")
   allergies    String?
   notes        String?

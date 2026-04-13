@@ -46,6 +46,7 @@ export default async function ChildrenPage() {
               name={child.name}
               dob={child.dob.toISOString()}
               stage={child.stage}
+              relationship={child.relationship}
               avatarColor={child.avatarColor}
               observationCount={child._count.observations}
             />
