@@ -27,12 +27,15 @@ export default async function ChildrenPage() {
 
       {children.length === 0 ? (
         <div className="text-center py-16">
-          <p className="font-heading text-xl text-ink-muted mb-2">
-            No children yet
+          <div className="text-5xl mb-4">🌱</div>
+          <h2 className="font-heading text-2xl text-ink mb-2">
+            Your care begins here
+          </h2>
+          <p className="text-sm text-ink-muted max-w-sm mx-auto mb-6">
+            Welcome your first child with a guided RIE intake &mdash;
+            8 sections designed to help you see the whole child from day one.
           </p>
-          <p className="text-sm text-ink-faint">
-            Add a child to begin documenting their journey
-          </p>
+          <ChildrenClient />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
