@@ -43,23 +43,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      // On sign-in, store user data in the token
       if (user) {
         token.id = user.id
+        // Fetch role/plan once at sign-in, store in JWT
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id as string },
+          select: { role: true, plan: true },
+        })
+        if (dbUser) {
+          token.role = dbUser.role
+          token.plan = dbUser.plan
+        }
+      }
+      // Refresh role/plan on update trigger
+      if (trigger === "update" && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, plan: true },
+        })
+        if (dbUser) {
+          token.role = dbUser.role
+          token.plan = dbUser.plan
+        }
       }
       return token
     },
     async session({ session, token }) {
       if (token?.id) {
         session.user.id = token.id as string
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true, plan: true },
-        })
-        if (dbUser) {
-          (session.user as unknown as Record<string, unknown>).role = dbUser.role;
-          (session.user as unknown as Record<string, unknown>).plan = dbUser.plan
-        }
+        // Read from token — no Prisma call needed
+        ;(session.user as unknown as Record<string, unknown>).role = token.role
+        ;(session.user as unknown as Record<string, unknown>).plan = token.plan
       }
       return session
     },
