@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx"
-import path from "path"
+import * as fs from "fs"
+import * as path from "path"
 
 export type BrainSheet = Record<string, string>[]
 
@@ -59,23 +60,16 @@ export const SHEET_MAP: Record<keyof PresenciaBrain, string> = {
 
 let _brain: PresenciaBrain | null = null
 
-/**
- * Parse a sheet where row 0 is the title row (used as xlsx "headers")
- * and the actual column names are in the first data row (index 0).
- * Data starts from row index 1 onward.
- */
 function parseSheet(ws: XLSX.WorkSheet): BrainSheet {
   const rawRows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, {
     defval: "",
   })
   if (rawRows.length < 2) return []
 
-  // Row 0 contains the real column names as values
   const headerRow = rawRows[0]
   const rawKeys = Object.keys(headerRow)
   const colNames = rawKeys.map((k) => String(headerRow[k]).trim()).filter(Boolean)
 
-  // Rows 1+ are the actual data
   return rawRows.slice(1).map((rawRow) => {
     const mapped: Record<string, string> = {}
     rawKeys.forEach((rawKey, i) => {
@@ -87,10 +81,31 @@ function parseSheet(ws: XLSX.WorkSheet): BrainSheet {
   })
 }
 
+function findBrainFile(): string {
+  // Try multiple possible locations
+  const candidates = [
+    path.join(process.cwd(), "raw", "PRESENCIA_Brain_v2.xlsx"),
+    path.resolve("raw", "PRESENCIA_Brain_v2.xlsx"),
+    path.join("/app", "raw", "PRESENCIA_Brain_v2.xlsx"),
+    path.resolve(__dirname, "..", "raw", "PRESENCIA_Brain_v2.xlsx"),
+  ]
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return candidate
+    } catch {
+      // continue
+    }
+  }
+  throw new Error(
+    `Cannot find PRESENCIA_Brain_v2.xlsx. Tried: ${candidates.join(", ")}`
+  )
+}
+
 export function loadBrain(): PresenciaBrain {
   if (_brain) return _brain
-  const filePath = path.join(process.cwd(), "raw", "PRESENCIA_Brain_v2.xlsx")
-  const wb = XLSX.readFile(filePath)
+  const filePath = findBrainFile()
+  const buffer = fs.readFileSync(filePath)
+  const wb = XLSX.read(buffer, { type: "buffer" })
   const brain = {} as PresenciaBrain
   for (const [key, sheetName] of Object.entries(SHEET_MAP)) {
     const ws = wb.Sheets[sheetName]
