@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
+import { Markdown } from "@/components/ai/Markdown"
 
 interface ObservationInsightProps {
   observationId: string
@@ -47,9 +48,7 @@ export function ObservationInsight({
             Hide
           </button>
         </div>
-        <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">
-          {insight}
-        </p>
+        <Markdown className="text-sm text-ink">{insight}</Markdown>
       </Card>
     )
   }

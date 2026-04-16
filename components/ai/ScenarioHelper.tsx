@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { Modal } from "@/components/ui/Modal"
+import { Markdown } from "@/components/ai/Markdown"
 
 interface ScenarioHelperProps {
   children?: { id: string; name: string; stage: string }[]
@@ -102,9 +103,7 @@ export function ScenarioHelper({ children = [] }: ScenarioHelperProps) {
 
           {response && (
             <div className="bg-sage-light rounded-[var(--radius-lg)] p-4">
-              <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">
-                {response}
-              </p>
+              <Markdown className="text-sm text-ink">{response}</Markdown>
               <div className="mt-3 flex gap-2">
                 <Button
                   variant="ghost"

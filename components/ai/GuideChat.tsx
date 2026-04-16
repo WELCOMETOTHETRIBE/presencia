@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/Button"
-import { Badge } from "@/components/ui/Badge"
+import { Markdown } from "@/components/ai/Markdown"
 
 interface Message {
   id: string
@@ -255,15 +255,15 @@ export function GuideChat({ children }: GuideChatProps) {
               }`}
             >
               {msg.role === "assistant" ? (
-                <div className="whitespace-pre-wrap">
-                  {msg.content || (
-                    <span className="inline-flex gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-ink-faint animate-bounce" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-ink-faint animate-bounce [animation-delay:150ms]" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-ink-faint animate-bounce [animation-delay:300ms]" />
-                    </span>
-                  )}
-                </div>
+                msg.content ? (
+                  <Markdown>{msg.content}</Markdown>
+                ) : (
+                  <span className="inline-flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-ink-faint animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-ink-faint animate-bounce [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-ink-faint animate-bounce [animation-delay:300ms]" />
+                  </span>
+                )
               ) : (
                 msg.content
               )}
