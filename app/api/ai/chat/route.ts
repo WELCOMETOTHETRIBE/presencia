@@ -9,6 +9,9 @@ import {
 } from "@/lib/ai"
 import { getBrainContext } from "@/lib/brain"
 
+// Truncate brain context to a reasonable size to keep TTFT fast
+const MAX_BRAIN_CHARS = 60000
+
 export async function POST(request: Request) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -17,8 +20,22 @@ export async function POST(request: Request) {
     })
   }
 
-  const { message, conversationId, childId, feature = "GUIDE_CHAT" } =
-    await request.json()
+  let message: string
+  let conversationId: string | undefined
+  let childId: string | undefined
+  let feature: string
+
+  try {
+    const body = await request.json()
+    message = body.message
+    conversationId = body.conversationId
+    childId = body.childId
+    feature = body.feature || "GUIDE_CHAT"
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid request body" }), {
+      status: 400,
+    })
+  }
 
   if (!message) {
     return new Response(JSON.stringify({ error: "Message required" }), {
@@ -26,10 +43,27 @@ export async function POST(request: Request) {
     })
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "AI not configured (missing API key)" }),
+      { status: 500 }
+    )
+  }
+
   // Build system prompt with Brain context
   const brainSections =
     FEATURE_BRAIN_SECTIONS[feature] || FEATURE_BRAIN_SECTIONS.GUIDE_CHAT
-  const brainContext = getBrainContext(brainSections as (keyof typeof import("@/lib/brain").SHEET_MAP)[])
+  let brainContext = getBrainContext(
+    brainSections as (keyof typeof import("@/lib/brain").SHEET_MAP)[]
+  )
+
+  // Truncate to keep response time fast
+  if (brainContext.length > MAX_BRAIN_CHARS) {
+    brainContext =
+      brainContext.slice(0, MAX_BRAIN_CHARS) +
+      "\n\n[Brain context truncated for response speed. Ask follow-up questions for more detail.]"
+  }
+
   const featurePrompt = FEATURE_PROMPTS[feature] || FEATURE_PROMPTS.GUIDE_CHAT
   const childContext = childId ? await buildChildContext(childId) : ""
 
@@ -44,32 +78,46 @@ export async function POST(request: Request) {
 
   // Get or create conversation
   let conversation
-  if (conversationId) {
-    conversation = await prisma.aIConversation.findFirst({
-      where: { id: conversationId, userId: session.user.id },
-      include: { messages: { orderBy: { createdAt: "asc" }, take: 50 } },
-    })
-  }
+  try {
+    if (conversationId) {
+      conversation = await prisma.aIConversation.findFirst({
+        where: { id: conversationId, userId: session.user.id },
+        include: { messages: { orderBy: { createdAt: "asc" }, take: 50 } },
+      })
+    }
 
-  if (!conversation) {
-    conversation = await prisma.aIConversation.create({
+    if (!conversation) {
+      conversation = await prisma.aIConversation.create({
+        data: {
+          userId: session.user.id,
+          childId: childId || null,
+          feature: feature as
+            | "GUIDE_CHAT"
+            | "OBSERVATION_INSIGHT"
+            | "PARENT_COMM_DRAFT"
+            | "SCENARIO_HELP"
+            | "ONBOARDING_TUTOR"
+            | "WEEKLY_DIGEST",
+        },
+        include: { messages: true },
+      })
+    }
+
+    // Save user message
+    await prisma.aIMessage.create({
       data: {
-        userId: session.user.id,
-        childId: childId || null,
-        feature: feature as "GUIDE_CHAT" | "OBSERVATION_INSIGHT" | "PARENT_COMM_DRAFT" | "SCENARIO_HELP" | "ONBOARDING_TUTOR" | "WEEKLY_DIGEST",
+        conversationId: conversation.id,
+        role: "user",
+        content: message,
       },
-      include: { messages: true },
     })
+  } catch (err) {
+    console.error("DB error:", err)
+    return new Response(
+      JSON.stringify({ error: "Database error: " + (err instanceof Error ? err.message : "unknown") }),
+      { status: 500 }
+    )
   }
-
-  // Save user message
-  await prisma.aIMessage.create({
-    data: {
-      conversationId: conversation.id,
-      role: "user",
-      content: message,
-    },
-  })
 
   // Build message history for API
   const apiMessages = [
@@ -80,20 +128,19 @@ export async function POST(request: Request) {
     { role: "user" as const, content: message },
   ]
 
-  // Stream response
-  const stream = await anthropic.messages.stream({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: apiMessages,
-  })
-
   const encoder = new TextEncoder()
   let fullResponse = ""
 
   const readable = new ReadableStream({
     async start(controller) {
       try {
+        const stream = anthropic.messages.stream({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: apiMessages,
+        })
+
         for await (const event of stream) {
           if (
             event.type === "content_block_delta" &&
@@ -123,10 +170,10 @@ export async function POST(request: Request) {
         )
         controller.close()
       } catch (error) {
+        console.error("AI stream error:", error)
+        const errMsg = error instanceof Error ? error.message : "Stream error"
         controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ error: "Stream error" })}\n\n`
-          )
+          encoder.encode(`data: ${JSON.stringify({ error: errMsg })}\n\n`)
         )
         controller.close()
       }
@@ -136,8 +183,9 @@ export async function POST(request: Request) {
   return new Response(readable, {
     headers: {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   })
 }

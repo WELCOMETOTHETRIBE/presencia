@@ -69,44 +69,76 @@ export function GuideChat({ children }: GuideChatProps) {
         }),
       })
 
-      if (!res.ok) throw new Error("Failed to send message")
+      if (!res.ok) {
+        const errBody = await res.text()
+        throw new Error(`API ${res.status}: ${errBody.slice(0, 200)}`)
+      }
 
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
 
       if (!reader) throw new Error("No reader")
 
+      // Buffer for incomplete SSE chunks (chunks can split mid-line)
+      let buffer = ""
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split("\n")
+        buffer += decoder.decode(value, { stream: true })
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue
-          const data = JSON.parse(line.slice(6))
+        // Process complete events (separated by double newline in SSE)
+        const events = buffer.split("\n\n")
+        buffer = events.pop() || "" // last item may be incomplete
 
-          if (data.text) {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId
-                  ? { ...m, content: m.content + data.text }
-                  : m
-              )
-            )
-          }
+        for (const event of events) {
+          const lines = event.split("\n")
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue
+            try {
+              const data = JSON.parse(line.slice(6))
 
-          if (data.done && data.conversationId) {
-            setConversationId(data.conversationId)
+              if (data.text) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: m.content + data.text }
+                      : m
+                  )
+                )
+              }
+
+              if (data.error) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: `Error: ${data.error}` }
+                      : m
+                  )
+                )
+              }
+
+              if (data.done && data.conversationId) {
+                setConversationId(data.conversationId)
+              }
+            } catch (err) {
+              console.error("Failed to parse SSE line:", line, err)
+            }
           }
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("Chat error:", err)
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
-            ? { ...m, content: "I'm sorry, something went wrong. Please try again." }
+            ? {
+                ...m,
+                content:
+                  "I'm sorry, something went wrong. " +
+                  (err instanceof Error ? err.message : "Please try again."),
+              }
             : m
         )
       )
